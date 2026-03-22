@@ -34,7 +34,7 @@ function isJoiSchema(value: unknown): value is Joi.Schema {
   );
 }
 
-function parseConfig<T>(config: Joi.Schema<T> | CacheConfig<T> | false | undefined): {
+function parseConfig<T>(config: Joi.Schema<T> | CacheConfig<T> | false | number | undefined): {
   schema?: Joi.Schema<T>;
   ttl: number | false;
 } {
@@ -99,7 +99,7 @@ function isExpired(entry: CacheEntry<unknown>, ttl: number | false): boolean {
  * @CacheReturnValue({ schema: Joi.number(), ttl: false })
  */
 export function CacheReturnValue<T = unknown>(
-  config?: Joi.Schema<T> | CacheConfig<T> | false,
+  config?: Joi.Schema<T> | CacheConfig<T> | false | number,
 ): MethodDecorator & PropertyDecorator {
   return function (_target: any, propertyKey: string | symbol, descriptor?: PropertyDescriptor): void {
     const { schema, ttl } = parseConfig(config);
