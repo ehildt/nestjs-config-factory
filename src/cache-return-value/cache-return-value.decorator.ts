@@ -65,7 +65,7 @@ function isExpired(entry: CacheEntry<unknown>, ttl: number | false): boolean {
 }
 
 /**
- * Decorator that caches the return value of a method or a getter property.
+ * Decorator that caches the return value of a method or a getter property.\
  * Optionally validates the cached value against a Joi schema and supports TTL-based expiration.
  *
  * Uses stale-while-revalidate strategy: returns stale value immediately while refreshing in background.
