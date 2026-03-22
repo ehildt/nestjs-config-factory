@@ -1,7 +1,19 @@
 import Joi from "joi";
 
 /**
- * Validates the return value of a getter or method with a Joi schema.
+ * Decorator that validates the return value of a getter or method with a Joi schema.
+ * Throws ValidateReturnValueError if validation fails.
+ *
+ * @template T - The expected type of the return value.
+ * @param schema - Joi schema used to validate the return value.
+ *
+ * @example
+ * class ConfigService {
+ *   @ValidateReturnValue(Joi.object({ port: Joi.number() }))
+ *   get config() {
+ *     return { port: 3000 };
+ *   }
+ * }
  */
 export function ValidateReturnValue<T>(schema: Joi.Schema<T>) {
   return function (target: any, propertyKey: string, descriptor?: PropertyDescriptor) {
@@ -50,6 +62,10 @@ export function ValidateReturnValue<T>(schema: Joi.Schema<T>) {
   };
 }
 
+/**
+ * Error thrown when a return value fails Joi schema validation.\
+ * Extends Error with Joi validation details as the cause.
+ */
 export class ValidateReturnValueError extends Error {
   constructor(message?: string, cause?: unknown) {
     super(message, { cause });
