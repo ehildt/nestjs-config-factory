@@ -1,5 +1,9 @@
 import Joi from 'joi';
 
-declare function CacheReturnValue<T = unknown>(schema?: Joi.Schema<T>): MethodDecorator & PropertyDecorator;
+interface CacheConfig<T = unknown> {
+    schema?: Joi.Schema<T>;
+    ttl?: number | false;
+}
+declare function CacheReturnValue<T = unknown>(config?: Joi.Schema<T> | CacheConfig<T> | false): MethodDecorator & PropertyDecorator;
 
-export { CacheReturnValue };
+export { type CacheConfig, CacheReturnValue };

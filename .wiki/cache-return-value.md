@@ -1,6 +1,6 @@
 # Cache-Return-Value
 
-Decorates methods and getter properties to cache their return values. Optionally validates cached values against a Joi schema.
+Decorates methods and getter properties to cache their return values with optional TTL-based expiration and Joi schema validation.
 
 ## Import
 
@@ -10,7 +10,9 @@ import { CacheReturnValue } from '@ehildt/nestjs-config-factory/cache-return-val
 
 ## Usage
 
-### Caching Getter Properties
+### Basic Usage (Default 5 Minute TTL)
+
+By default, cached values expire after 5 minutes and use a stale-while-revalidate strategy.
 
 ```typescript
 import { Injectable } from '@nestjs/common';
@@ -30,18 +32,33 @@ service.config; // Logs "Computing config..."
 service.config; // Returns cached value (no log)
 ```
 
-### Caching Methods
+### Permanent Cache
+
+Use `false` to disable TTL expiration entirely.
 
 ```typescript
-@CacheReturnValue()
-getUserById(id: number) {
-  console.log(`Fetching user ${id}...`);
-  return { id, name: 'John' };
+@CacheReturnValue(false)
+get permanentConfig() {
+  return { version: '1.0.0' };
+}
+```
+
+### Custom TTL
+
+Provide a custom TTL in milliseconds. Use a number for shorthand or a `CacheConfig` object for additional options.
+
+```typescript
+// Number shorthand (60 seconds)
+@CacheReturnValue(60000)
+get userData() {
+  return fetchUserData();
 }
 
-getUserById(1); // Logs "Fetching user 1..."
-getUserById(1); // Returns cached value
-getUserById(2); // Logs "Fetching user 2..." (different args)
+// Config object (60 seconds)
+@CacheReturnValue({ ttl: 60000 })
+get otherData() {
+  return fetchOtherData();
+}
 ```
 
 ### With Joi Validation
@@ -63,6 +80,48 @@ getUserById(1); // Validates against UserSchema
 getUserById(1); // Returns cached, validated value
 ```
 
+### Combining Schema and TTL
+
+```typescript
+@CacheReturnValue({ schema: UserSchema, ttl: 300000 }) // 5 minutes with validation
+getUserById(id: number) {
+  return { id, name: 'John' };
+}
+```
+
+### Caching Methods
+
+```typescript
+@CacheReturnValue()
+getUserById(id: number) {
+  console.log(`Fetching user ${id}...`);
+  return { id, name: 'John' };
+}
+
+getUserById(1); // Logs "Fetching user 1..."
+getUserById(1); // Returns cached value
+getUserById(2); // Logs "Fetching user 2..." (different args)
+```
+
+## Stale-While-Revalidate
+
+When TTL expires, the cached value is returned immediately (non-blocking) while a background refresh is triggered. This ensures:
+
+- **No blocking**: The caller always receives a value immediately
+- **Background refresh**: The cache is updated asynchronously
+- **Shared promise**: Multiple concurrent reads share the same refresh promise, preventing duplicate fetches
+
+```typescript
+@CacheReturnValue({ ttl: 1000 })
+get data() {
+  return fetchData(); // Called once when stale, not per concurrent read
+}
+
+// Request 1: Returns stale value, triggers refresh
+// Request 2-10: Returns stale value, reuses in-flight refresh
+// After refresh completes: All subsequent requests get fresh value
+```
+
 ## Features
 
 ### Instance Isolation
@@ -77,13 +136,24 @@ Method caches are keyed by a hash of the method name and serialized arguments, e
 
 When a Joi schema is provided, return values are validated before caching. Invalid values throw `ValidateReturnValueError`.
 
+### TTL Options
+
+| Input | TTL Behavior |
+|-------|--------------|
+| `@CacheReturnValue()` | 5 minutes (default) |
+| `@CacheReturnValue(schema)` | 5 minutes with validation |
+| `@CacheReturnValue(60000)` | 60 seconds, no validation |
+| `@CacheReturnValue(false)` | Permanent (no expiration) |
+| `@CacheReturnValue({ ttl: false })` | Permanent with optional validation |
+| `@CacheReturnValue({ ttl: 60000 })` | 60 seconds, no validation |
+| `@CacheReturnValue({ schema, ttl: 60000 })` | 60 seconds with validation |
+
 ## Complete Example
 
 ```typescript
 import { Injectable } from '@nestjs/common';
 import { CacheReturnValue } from '@ehildt/nestjs-config-factory/cache-return-value';
 import Joi from 'joi';
-import { hashPayload } from '@ehildt/ckir-helpers/hash-payload';
 
 const DatabaseConfigSchema = Joi.object({
   host: Joi.string().required(),
@@ -93,6 +163,7 @@ const DatabaseConfigSchema = Joi.object({
 
 @Injectable()
 export class DatabaseConfigService {
+  // Default 5 minute TTL with validation
   @CacheReturnValue(DatabaseConfigSchema)
   get config() {
     return {
@@ -102,10 +173,16 @@ export class DatabaseConfigService {
     };
   }
 
-  @CacheReturnValue(Joi.object({ id: Joi.number().required() }))
+  // Custom 1 minute TTL with validation
+  @CacheReturnValue({ schema: Joi.object({ id: Joi.number().required() }), ttl: 60000 })
   async fetchUser(id: number) {
-    // Simulated database call
     return { id, name: 'User ' + id };
+  }
+
+  // Permanent cache (no TTL)
+  @CacheReturnValue({ schema: Joi.string(), ttl: false })
+  getVersion() {
+    return '1.0.0';
   }
 }
 ```

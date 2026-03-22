@@ -9,6 +9,20 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 var ConfigFactoryModule = class {
+  /**
+   * Creates a dynamic module with the specified configuration providers.
+   * All providers are automatically exported for use by other modules.
+   *
+   * @param options - Configuration options
+   * @param options.global - Whether to register as a global module
+   * @param options.providers - Array of configuration provider classes
+   *
+   * @example
+   * ConfigFactoryModule.forRoot({
+   *   global: true,
+   *   providers: [DatabaseConfigService, AppConfigService],
+   * });
+   */
   static forRoot({ global = false, providers = [] } = {}) {
     if (!providers.length)
       console.warn("[ConfigFactoryModule] No providers registered.");

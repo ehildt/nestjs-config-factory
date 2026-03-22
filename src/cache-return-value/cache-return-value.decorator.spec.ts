@@ -124,6 +124,259 @@ describe("ValidateAndCacheReturnValue decorator", () => {
   });
 });
 
+describe("CacheReturnValue with TTL", () => {
+  let mockTime: ReturnType<typeof vi.fn<() => number>>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockTime = vi.fn(() => Date.now());
+    vi.spyOn(Date, "now").mockImplementation(mockTime);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns cached value before TTL expires", () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(1000 + 5 * 60 * 1000 - 1);
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("triggers refresh after TTL expires (stale-while-revalidate)", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(1000 + 5 * 60 * 1000 + 1);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("returns stale value immediately when TTL expires", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+
+    mockTime.mockReturnValue(1000 + 5 * 60 * 1000 + 1);
+    const immediateResult = instance.value;
+    expect(immediateResult).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("shares refresh promise during async refresh", async () => {
+    let resolveMethod: (value: number) => void;
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return new Promise<number>((resolve) => {
+          resolveMethod = resolve;
+        });
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    void instance.value;
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(1000 + 5 * 60 * 1000 + 1);
+
+    void instance.value;
+    void instance.value;
+    void instance.value;
+
+    expect(instance.callCount).toBe(2);
+
+    resolveMethod!(42);
+  });
+
+  it("respects custom TTL from config object", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue({ ttl: 1000 })
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+
+    mockTime.mockReturnValue(1500);
+    expect(instance.value).toBe(1);
+
+    mockTime.mockReturnValue(2001);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("accepts number as TTL shorthand", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue(1000)
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(1500);
+    expect(instance.value).toBe(1);
+
+    mockTime.mockReturnValue(2001);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("does not expire when ttl is false", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue(false)
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+
+    mockTime.mockReturnValue(1000 + 5 * 60 * 1000 + 10000);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("does not expire when config.ttl is false", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue({ ttl: false })
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+
+    mockTime.mockReturnValue(1000 + 5 * 60 * 1000 + 10000);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("works with schema and TTL together", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue({ schema: Joi.number(), ttl: 1000 })
+      get value() {
+        this.callCount++;
+        return this.callCount;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(2001);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("handles method TTL expiry with stale-while-revalidate", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue({ ttl: 1000 })
+      method(x: number) {
+        this.callCount++;
+        return x * 2;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.method(5)).toBe(10);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(2001);
+    const staleResult = instance.method(5);
+    expect(staleResult).toBe(10);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+  });
+});
+
 describe("CacheReturnValue with symbol property keys", () => {
   let instance: SymbolTestClass;
 
