@@ -1,5 +1,11 @@
 # @ehildt/nestjs-config-factory
 
+## 1.1.2
+
+### Patch Changes
+
+- 4175015: Fix CacheReturnValue to accept number as TTL shorthand in type declaration
+
 ## 1.1.1
 
 ### Patch Changes
