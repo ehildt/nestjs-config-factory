@@ -1,0 +1,149 @@
+import Joi from "joi";
+
+import { CacheReturnValue } from "./cache-return-value.decorator.ts";
+
+class TestClass {
+  callCount = 0;
+  private _value = 0;
+
+  @CacheReturnValue()
+  simpleGetter = 42;
+
+  @CacheReturnValue()
+  simpleMethod(x: number) {
+    this.callCount++;
+    return x * 2;
+  }
+
+  @CacheReturnValue()
+  anotherMethod(x: number) {
+    this.callCount++;
+    return x * 3;
+  }
+
+  @CacheReturnValue(Joi.number().min(10))
+  validatedMethod(x: number) {
+    this.callCount++;
+    return x;
+  }
+
+  @CacheReturnValue(Joi.number().min(1))
+  get validatedGetter() {
+    return this._value;
+  }
+
+  set validatedGetter(val: number) {
+    this._value = val;
+  }
+}
+
+const testSymbol = Symbol("test");
+
+class SymbolTestClass {
+  callCount = 0;
+
+  @CacheReturnValue()
+  get [testSymbol]() {
+    this.callCount++;
+    return 42;
+  }
+}
+
+describe("ValidateAndCacheReturnValue decorator", () => {
+  let instance: TestClass;
+
+  beforeEach(() => {
+    instance = new TestClass();
+  });
+
+  it("caches getter values", () => {
+    const first = instance.simpleGetter;
+    const second = instance.simpleGetter;
+    expect(first).toBe(42);
+    expect(second).toBe(42);
+  });
+
+  it("caches method results per arguments", () => {
+    const first = instance.simpleMethod(2);
+    const second = instance.simpleMethod(2);
+    const third = instance.simpleMethod(3);
+
+    expect(first).toBe(4);
+    expect(second).toBe(4); // Cached
+    expect(third).toBe(6); // New arguments, not cached
+    expect(instance.callCount).toBe(2); // Only called twice
+  });
+
+  it("validates method return when schema is provided", () => {
+    expect(() => instance.validatedMethod(5)).toThrow(/Schema violation/);
+    expect(instance.validatedMethod(15)).toBe(15);
+  });
+
+  it("validates getter return when schema is provided", () => {
+    instance.validatedGetter = 0;
+    expect(() => instance.validatedGetter).toThrow(/Schema violation/);
+
+    instance.validatedGetter = 5;
+    expect(instance.validatedGetter).toBe(5);
+  });
+
+  it("caches validated getter values", () => {
+    instance.validatedGetter = 10;
+    const first = instance.validatedGetter;
+    instance.validatedGetter = 100; // Should not affect cached value
+    const second = instance.validatedGetter;
+    expect(first).toBe(10);
+    expect(second).toBe(10);
+  });
+
+  it("does not validate if schema is not provided", () => {
+    expect(instance.simpleMethod(1)).toBe(2);
+    expect(instance.simpleGetter).toBe(42);
+  });
+
+  it("caches validated method results", () => {
+    instance.validatedMethod(20);
+    const result1 = instance.validatedMethod(20);
+    expect(result1).toBe(20); // Cached value
+  });
+
+  it("maintains separate caches per instance", () => {
+    const instance2 = new TestClass();
+    expect(instance.simpleMethod(2)).toBe(4);
+    expect(instance2.simpleMethod(2)).toBe(4);
+    expect(instance.callCount).toBe(1);
+    expect(instance2.callCount).toBe(1);
+  });
+
+  it("does not share cache between different methods", () => {
+    instance.simpleMethod(2);
+    instance.anotherMethod(2);
+    expect(instance.callCount).toBe(2);
+    expect(instance.simpleMethod(2)).toBe(4);
+    expect(instance.anotherMethod(2)).toBe(6);
+  });
+});
+
+describe("CacheReturnValue with symbol property keys", () => {
+  let instance: SymbolTestClass;
+
+  beforeEach(() => {
+    instance = new SymbolTestClass();
+  });
+
+  it("caches symbol property getter values", () => {
+    const first = instance[testSymbol];
+    const second = instance[testSymbol];
+    expect(first).toBe(42);
+    expect(second).toBe(42);
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("maintains separate caches for symbol properties per instance", () => {
+    const instance2 = new SymbolTestClass();
+    void instance[testSymbol];
+    void instance2[testSymbol];
+    expect(instance.callCount).toBe(1);
+    expect(instance2.callCount).toBe(1);
+  });
+});
