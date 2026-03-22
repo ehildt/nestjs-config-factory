@@ -1,7 +1,7 @@
 {
   "name": "@ehildt/nestjs-config-factory",
   "description": "A dynamic NestJS module factory designed to register, manage, and expose custom configuration providers throughout the application.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "type": "module",
   "exports": {
