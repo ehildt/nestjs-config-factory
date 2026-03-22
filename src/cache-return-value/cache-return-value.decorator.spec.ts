@@ -400,3 +400,247 @@ describe("CacheReturnValue with symbol property keys", () => {
     expect(instance2.callCount).toBe(1);
   });
 });
+
+describe("CacheReturnValue refresh error handling", () => {
+  let mockTime: ReturnType<typeof vi.fn<() => number>>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockTime = vi.fn(() => Date.now());
+    vi.spyOn(Date, "now").mockImplementation(mockTime);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("retains stale value when refresh throws error", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue({ ttl: 1000 })
+      get value() {
+        this.callCount++;
+        if (this.callCount === 1) return 1;
+        throw new Error("refresh failed");
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(2001);
+    expect(instance.value).toBe(1);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+
+    mockTime.mockReturnValue(3001);
+    expect(instance.value).toBe(1);
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("retains stale value when method refresh throws error", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue({ ttl: 1000 })
+      method(x: number) {
+        this.callCount++;
+        if (this.callCount === 1) return x * 2;
+        throw new Error("refresh failed");
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(instance.method(5)).toBe(10);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(2001);
+    expect(instance.method(5)).toBe(10);
+
+    await vi.runAllTimersAsync();
+    expect(instance.callCount).toBe(2);
+
+    mockTime.mockReturnValue(3001);
+    expect(instance.method(5)).toBe(10);
+    expect(instance.callCount).toBe(2);
+  });
+});
+
+describe("CacheReturnValue with async/Promise returns", () => {
+  let mockTime: ReturnType<typeof vi.fn<() => number>>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockTime = vi.fn(() => Date.now());
+    vi.spyOn(Date, "now").mockImplementation(mockTime);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("caches resolved Promise return values", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return Promise.resolve(this.callCount);
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    const promise = instance.value;
+    expect(instance.callCount).toBe(1);
+    expect(await promise).toBe(1);
+
+    mockTime.mockReturnValue(2000);
+    const promise2 = instance.value;
+    expect(instance.callCount).toBe(1);
+    expect(await promise2).toBe(1);
+  });
+
+  it("handles async method with arguments", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      async method(x: number) {
+        this.callCount++;
+        return x * 2;
+      }
+    }
+
+    mockTime.mockReturnValue(1000);
+    const instance = new TestClass();
+    expect(await instance.method(5)).toBe(10);
+    expect(instance.callCount).toBe(1);
+
+    mockTime.mockReturnValue(2000);
+    expect(await instance.method(5)).toBe(10);
+    expect(instance.callCount).toBe(1);
+
+    expect(await instance.method(3)).toBe(6);
+    expect(instance.callCount).toBe(2);
+  });
+});
+
+describe("CacheReturnValue edge cases", () => {
+  it("handles method with no arguments", () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      method() {
+        this.callCount++;
+        return 42;
+      }
+    }
+
+    const instance = new TestClass();
+    expect(instance.method()).toBe(42);
+    expect(instance.method()).toBe(42);
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("handles getter returning null", () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return null;
+      }
+    }
+
+    const instance = new TestClass();
+    expect(instance.value).toBe(null);
+    expect(instance.value).toBe(null);
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("handles method returning null", () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      method() {
+        this.callCount++;
+        return null;
+      }
+    }
+
+    const instance = new TestClass();
+    expect(instance.method()).toBe(null);
+    expect(instance.method()).toBe(null);
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("handles getter returning undefined", () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      get value() {
+        this.callCount++;
+        return undefined;
+      }
+    }
+
+    const instance = new TestClass();
+    expect(instance.value).toBe(undefined);
+    expect(instance.value).toBe(undefined);
+    expect(instance.callCount).toBe(1);
+  });
+
+  it("handles method with multiple arguments including strings", () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      method(a: number, b: string, c: boolean) {
+        this.callCount++;
+        return `${a}-${b}-${c}`;
+      }
+    }
+
+    const instance = new TestClass();
+    expect(instance.method(1, "hello", true)).toBe("1-hello-true");
+    expect(instance.method(1, "hello", true)).toBe("1-hello-true");
+    expect(instance.callCount).toBe(1);
+
+    expect(instance.method(2, "world", false)).toBe("2-world-false");
+    expect(instance.callCount).toBe(2);
+  });
+
+  it("handles concurrent calls during initial cache miss (method)", async () => {
+    class TestClass {
+      callCount = 0;
+
+      @CacheReturnValue()
+      method(x: number) {
+        this.callCount++;
+        return x * 2;
+      }
+    }
+
+    const instance = new TestClass();
+
+    const p1 = instance.method(5);
+    const p2 = instance.method(5);
+    const p3 = instance.method(5);
+
+    expect(instance.callCount).toBe(1);
+    expect(p1).toBe(10);
+    expect(p2).toBe(10);
+    expect(p3).toBe(10);
+  });
+});
