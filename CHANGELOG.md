@@ -1,5 +1,11 @@
 # @ehildt/nestjs-config-factory
 
+## 1.1.1
+
+### Patch Changes
+
+- ac0ba4a: - Add support for number as shorthand for TTL config (e.g., `@CacheReturnValue(5000)`)
+
 ## 1.1.0
 
 ### Minor Changes
