@@ -1,5 +1,11 @@
 # @ehildt/nestjs-config-factory
 
+## 1.1.3
+
+### Patch Changes
+
+- 8e12a4e: updated dependencies and fixed ci/cd
+
 ## 1.1.2
 
 ### Patch Changes
