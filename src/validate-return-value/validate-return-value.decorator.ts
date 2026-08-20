@@ -1,4 +1,4 @@
-import Joi from "joi";
+import Joi from 'joi';
 
 /**
  * Decorator that validates the return value of a getter or method with a Joi schema.

@@ -1,7 +1,7 @@
-import { hashPayload } from "@ehildt/ckir-helpers/hash-payload";
-import Joi from "joi";
+import { hashPayload } from '@ehildt/ckir-helpers/hash-payload';
+import Joi from 'joi';
 
-import { ValidateReturnValueError } from "../validate-return-value/validate-return-value.decorator.ts";
+import { ValidateReturnValueError } from '../validate-return-value/validate-return-value.decorator.ts';
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
@@ -27,10 +27,10 @@ type CacheEntry<T> = {
 
 function isJoiSchema(value: unknown): value is Joi.Schema {
   return (
-    typeof value === "object" &&
+    typeof value === 'object' &&
     value !== null &&
-    "type" in value &&
-    typeof (value as Record<string, unknown>).validate === "function"
+    'type' in value &&
+    typeof (value as Record<string, unknown>).validate === 'function'
   );
 }
 
@@ -40,7 +40,7 @@ function parseConfig<T>(config: Joi.Schema<T> | CacheConfig<T> | false | number 
 } {
   if (config === false) return { ttl: false };
   if (config === undefined) return { ttl: DEFAULT_TTL_MS };
-  if (typeof config === "number") return { ttl: config };
+  if (typeof config === 'number') return { ttl: config };
   if (isJoiSchema(config)) return { schema: config, ttl: DEFAULT_TTL_MS };
   return {
     schema: config.schema,

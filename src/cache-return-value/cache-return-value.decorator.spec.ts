@@ -1,6 +1,6 @@
-import Joi from "joi";
+import Joi from 'joi';
 
-import { CacheReturnValue } from "./cache-return-value.decorator.ts";
+import { CacheReturnValue } from './cache-return-value.decorator.ts';
 
 class TestClass {
   callCount = 0;
@@ -37,7 +37,7 @@ class TestClass {
   }
 }
 
-const testSymbol = Symbol("test");
+const testSymbol = Symbol('test');
 
 class SymbolTestClass {
   callCount = 0;
@@ -49,21 +49,21 @@ class SymbolTestClass {
   }
 }
 
-describe("ValidateAndCacheReturnValue decorator", () => {
+describe('ValidateAndCacheReturnValue decorator', () => {
   let instance: TestClass;
 
   beforeEach(() => {
     instance = new TestClass();
   });
 
-  it("caches getter values", () => {
+  it('caches getter values', () => {
     const first = instance.simpleGetter;
     const second = instance.simpleGetter;
     expect(first).toBe(42);
     expect(second).toBe(42);
   });
 
-  it("caches method results per arguments", () => {
+  it('caches method results per arguments', () => {
     const first = instance.simpleMethod(2);
     const second = instance.simpleMethod(2);
     const third = instance.simpleMethod(3);
@@ -74,12 +74,12 @@ describe("ValidateAndCacheReturnValue decorator", () => {
     expect(instance.callCount).toBe(2); // Only called twice
   });
 
-  it("validates method return when schema is provided", () => {
+  it('validates method return when schema is provided', () => {
     expect(() => instance.validatedMethod(5)).toThrow(/Schema violation/);
     expect(instance.validatedMethod(15)).toBe(15);
   });
 
-  it("validates getter return when schema is provided", () => {
+  it('validates getter return when schema is provided', () => {
     instance.validatedGetter = 0;
     expect(() => instance.validatedGetter).toThrow(/Schema violation/);
 
@@ -87,7 +87,7 @@ describe("ValidateAndCacheReturnValue decorator", () => {
     expect(instance.validatedGetter).toBe(5);
   });
 
-  it("caches validated getter values", () => {
+  it('caches validated getter values', () => {
     instance.validatedGetter = 10;
     const first = instance.validatedGetter;
     instance.validatedGetter = 100; // Should not affect cached value
@@ -96,18 +96,18 @@ describe("ValidateAndCacheReturnValue decorator", () => {
     expect(second).toBe(10);
   });
 
-  it("does not validate if schema is not provided", () => {
+  it('does not validate if schema is not provided', () => {
     expect(instance.simpleMethod(1)).toBe(2);
     expect(instance.simpleGetter).toBe(42);
   });
 
-  it("caches validated method results", () => {
+  it('caches validated method results', () => {
     instance.validatedMethod(20);
     const result1 = instance.validatedMethod(20);
     expect(result1).toBe(20); // Cached value
   });
 
-  it("maintains separate caches per instance", () => {
+  it('maintains separate caches per instance', () => {
     const instance2 = new TestClass();
     expect(instance.simpleMethod(2)).toBe(4);
     expect(instance2.simpleMethod(2)).toBe(4);
@@ -115,7 +115,7 @@ describe("ValidateAndCacheReturnValue decorator", () => {
     expect(instance2.callCount).toBe(1);
   });
 
-  it("does not share cache between different methods", () => {
+  it('does not share cache between different methods', () => {
     instance.simpleMethod(2);
     instance.anotherMethod(2);
     expect(instance.callCount).toBe(2);
@@ -124,20 +124,20 @@ describe("ValidateAndCacheReturnValue decorator", () => {
   });
 });
 
-describe("CacheReturnValue with TTL", () => {
+describe('CacheReturnValue with TTL', () => {
   let mockTime: ReturnType<typeof vi.fn<() => number>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     mockTime = vi.fn(() => Date.now());
-    vi.spyOn(Date, "now").mockImplementation(mockTime);
+    vi.spyOn(Date, 'now').mockImplementation(mockTime);
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("returns cached value before TTL expires", () => {
+  it('returns cached value before TTL expires', () => {
     class TestClass {
       callCount = 0;
 
@@ -158,7 +158,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("triggers refresh after TTL expires (stale-while-revalidate)", async () => {
+  it('triggers refresh after TTL expires (stale-while-revalidate)', async () => {
     class TestClass {
       callCount = 0;
 
@@ -181,7 +181,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(2);
   });
 
-  it("returns stale value immediately when TTL expires", async () => {
+  it('returns stale value immediately when TTL expires', async () => {
     class TestClass {
       callCount = 0;
 
@@ -204,7 +204,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(2);
   });
 
-  it("shares refresh promise during async refresh", async () => {
+  it('shares refresh promise during async refresh', async () => {
     let resolveMethod: (value: number) => void;
     class TestClass {
       callCount = 0;
@@ -234,7 +234,7 @@ describe("CacheReturnValue with TTL", () => {
     resolveMethod!(42);
   });
 
-  it("respects custom TTL from config object", async () => {
+  it('respects custom TTL from config object', async () => {
     class TestClass {
       callCount = 0;
 
@@ -259,7 +259,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(2);
   });
 
-  it("accepts number as TTL shorthand", async () => {
+  it('accepts number as TTL shorthand', async () => {
     class TestClass {
       callCount = 0;
 
@@ -285,7 +285,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(2);
   });
 
-  it("does not expire when ttl is false", async () => {
+  it('does not expire when ttl is false', async () => {
     class TestClass {
       callCount = 0;
 
@@ -307,7 +307,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("does not expire when config.ttl is false", async () => {
+  it('does not expire when config.ttl is false', async () => {
     class TestClass {
       callCount = 0;
 
@@ -329,7 +329,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("works with schema and TTL together", async () => {
+  it('works with schema and TTL together', async () => {
     class TestClass {
       callCount = 0;
 
@@ -352,7 +352,7 @@ describe("CacheReturnValue with TTL", () => {
     expect(instance.callCount).toBe(2);
   });
 
-  it("handles method TTL expiry with stale-while-revalidate", async () => {
+  it('handles method TTL expiry with stale-while-revalidate', async () => {
     class TestClass {
       callCount = 0;
 
@@ -377,14 +377,14 @@ describe("CacheReturnValue with TTL", () => {
   });
 });
 
-describe("CacheReturnValue with symbol property keys", () => {
+describe('CacheReturnValue with symbol property keys', () => {
   let instance: SymbolTestClass;
 
   beforeEach(() => {
     instance = new SymbolTestClass();
   });
 
-  it("caches symbol property getter values", () => {
+  it('caches symbol property getter values', () => {
     const first = instance[testSymbol];
     const second = instance[testSymbol];
     expect(first).toBe(42);
@@ -392,7 +392,7 @@ describe("CacheReturnValue with symbol property keys", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("maintains separate caches for symbol properties per instance", () => {
+  it('maintains separate caches for symbol properties per instance', () => {
     const instance2 = new SymbolTestClass();
     void instance[testSymbol];
     void instance2[testSymbol];
@@ -401,20 +401,20 @@ describe("CacheReturnValue with symbol property keys", () => {
   });
 });
 
-describe("CacheReturnValue refresh error handling", () => {
+describe('CacheReturnValue refresh error handling', () => {
   let mockTime: ReturnType<typeof vi.fn<() => number>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     mockTime = vi.fn(() => Date.now());
-    vi.spyOn(Date, "now").mockImplementation(mockTime);
+    vi.spyOn(Date, 'now').mockImplementation(mockTime);
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("retains stale value when refresh throws error", async () => {
+  it('retains stale value when refresh throws error', async () => {
     class TestClass {
       callCount = 0;
 
@@ -422,7 +422,7 @@ describe("CacheReturnValue refresh error handling", () => {
       get value() {
         this.callCount++;
         if (this.callCount === 1) return 1;
-        throw new Error("refresh failed");
+        throw new Error('refresh failed');
       }
     }
 
@@ -442,7 +442,7 @@ describe("CacheReturnValue refresh error handling", () => {
     expect(instance.callCount).toBe(2);
   });
 
-  it("retains stale value when method refresh throws error", async () => {
+  it('retains stale value when method refresh throws error', async () => {
     class TestClass {
       callCount = 0;
 
@@ -450,7 +450,7 @@ describe("CacheReturnValue refresh error handling", () => {
       method(x: number) {
         this.callCount++;
         if (this.callCount === 1) return x * 2;
-        throw new Error("refresh failed");
+        throw new Error('refresh failed');
       }
     }
 
@@ -471,20 +471,20 @@ describe("CacheReturnValue refresh error handling", () => {
   });
 });
 
-describe("CacheReturnValue with async/Promise returns", () => {
+describe('CacheReturnValue with async/Promise returns', () => {
   let mockTime: ReturnType<typeof vi.fn<() => number>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     mockTime = vi.fn(() => Date.now());
-    vi.spyOn(Date, "now").mockImplementation(mockTime);
+    vi.spyOn(Date, 'now').mockImplementation(mockTime);
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("caches resolved Promise return values", async () => {
+  it('caches resolved Promise return values', async () => {
     class TestClass {
       callCount = 0;
 
@@ -507,7 +507,7 @@ describe("CacheReturnValue with async/Promise returns", () => {
     expect(await promise2).toBe(1);
   });
 
-  it("handles async method with arguments", async () => {
+  it('handles async method with arguments', async () => {
     class TestClass {
       callCount = 0;
 
@@ -532,8 +532,8 @@ describe("CacheReturnValue with async/Promise returns", () => {
   });
 });
 
-describe("CacheReturnValue edge cases", () => {
-  it("handles method with no arguments", () => {
+describe('CacheReturnValue edge cases', () => {
+  it('handles method with no arguments', () => {
     class TestClass {
       callCount = 0;
 
@@ -550,7 +550,7 @@ describe("CacheReturnValue edge cases", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("handles getter returning null", () => {
+  it('handles getter returning null', () => {
     class TestClass {
       callCount = 0;
 
@@ -567,7 +567,7 @@ describe("CacheReturnValue edge cases", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("handles method returning null", () => {
+  it('handles method returning null', () => {
     class TestClass {
       callCount = 0;
 
@@ -584,7 +584,7 @@ describe("CacheReturnValue edge cases", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("handles getter returning undefined", () => {
+  it('handles getter returning undefined', () => {
     class TestClass {
       callCount = 0;
 
@@ -601,7 +601,7 @@ describe("CacheReturnValue edge cases", () => {
     expect(instance.callCount).toBe(1);
   });
 
-  it("handles method with multiple arguments including strings", () => {
+  it('handles method with multiple arguments including strings', () => {
     class TestClass {
       callCount = 0;
 
@@ -613,15 +613,15 @@ describe("CacheReturnValue edge cases", () => {
     }
 
     const instance = new TestClass();
-    expect(instance.method(1, "hello", true)).toBe("1-hello-true");
-    expect(instance.method(1, "hello", true)).toBe("1-hello-true");
+    expect(instance.method(1, 'hello', true)).toBe('1-hello-true');
+    expect(instance.method(1, 'hello', true)).toBe('1-hello-true');
     expect(instance.callCount).toBe(1);
 
-    expect(instance.method(2, "world", false)).toBe("2-world-false");
+    expect(instance.method(2, 'world', false)).toBe('2-world-false');
     expect(instance.callCount).toBe(2);
   });
 
-  it("handles concurrent calls during initial cache miss (method)", async () => {
+  it('handles concurrent calls during initial cache miss (method)', async () => {
     class TestClass {
       callCount = 0;
 

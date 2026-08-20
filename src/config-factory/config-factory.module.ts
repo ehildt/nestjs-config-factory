@@ -1,6 +1,6 @@
-import { DynamicModule, Module } from "@nestjs/common";
+import { DynamicModule, Module } from '@nestjs/common';
 
-import { ConfigFactoryOptions } from "./config-factory.model.ts";
+import { ConfigFactoryOptions } from './config-factory.model.ts';
 
 /**
  * NestJS module for registering and exporting configuration providers.
@@ -25,7 +25,7 @@ export class ConfigFactoryModule {
   static forRoot({ global = false, providers = [] }: ConfigFactoryOptions = {}): DynamicModule {
     if (!providers.length)
       // eslint-disable-next-line no-console
-      console.warn("[ConfigFactoryModule] No providers registered.");
+      console.warn('[ConfigFactoryModule] No providers registered.');
 
     return {
       global,

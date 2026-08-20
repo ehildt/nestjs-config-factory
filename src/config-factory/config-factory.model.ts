@@ -1,4 +1,4 @@
-import { Provider } from "@nestjs/common";
+import { Provider } from '@nestjs/common';
 
 /**
  * Options for configuring the ConfigFactoryModule.
